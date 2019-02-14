@@ -14,6 +14,9 @@ func (f *Fs) Prompt(key, question string) string {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("string | " + question)
 	text, _ := reader.ReadString('\n')
+	text = strings.TrimSpace(text)
+	text = strings.TrimRight(text, "`")
+	text = strings.TrimLeft(text, "`")
 	if strings.Contains(text, "?") {
 		newtext := strings.Split(text, "?")
 		text = newtext[0]
@@ -27,10 +30,15 @@ func (f *Fs) PromptBool(key string, question string) bool {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("bool | y/n | " + question)
 	text, _ := reader.ReadString('\n')
+	text = strings.TrimSpace(text)
+	text = strings.TrimRight(text, "`")
+	text = strings.TrimLeft(text, "`")
+
 	if strings.Contains(text, "?") {
 		newtext := strings.Split(text, "?")
 		text = newtext[0]
 	}
+
 	ans := util.AsBool(text)
 	if strings.Contains(text, "?") {
 		newtext := strings.Split(text, "?")
