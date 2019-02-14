@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"github.com/Masterminds/sprig"
 	"github.com/gofunct/fsctl/util"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -27,7 +26,7 @@ func (c *Fs) readInConfigFiles() error {
 			if err != nil {
 				panic(err)
 			}
-			if err := viper.ReadConfig(bytes.NewBuffer(b)); err != nil {
+			if err := util.V.ReadConfig(bytes.NewBuffer(b)); err != nil {
 				panic(err)
 			}
 		}
