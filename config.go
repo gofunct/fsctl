@@ -26,7 +26,7 @@ func (c *Fs) readInConfigFiles() error {
 			if err != nil {
 				panic(err)
 			}
-			if err := util.V.ReadConfig(bytes.NewBuffer(b)); err != nil {
+			if err := c.ReadConfig(bytes.NewBuffer(b)); err != nil {
 				panic(err)
 			}
 		}
