@@ -2,6 +2,7 @@ package fsctl
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/Masterminds/sprig"
 	"github.com/gofunct/fsctl/util"
 	"gopkg.in/yaml.v2"
@@ -14,6 +15,10 @@ import (
 
 func (c *Fs) readInConfigFiles() error {
 	if err := filepath.Walk(os.Getenv("PWD"), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+			return err
+		}
 		if info.IsDir() && info.Name() == "vendor" {
 			return filepath.SkipDir
 		}
