@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/Masterminds/sprig"
-	"github.com/gofunct/fsctl/util"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"io"
@@ -15,14 +14,17 @@ import (
 	"text/template"
 )
 
+var errFmt = "ERROR: %s\n%s\n"
+
 type Fs struct {
 	assetFunc AssetFunc
 	dirFunc   AssetDirFunc
 	*afero.Afero
 	*viper.Viper
+	tmpDir string
 }
 
-func NewFs() *Fs {
+func NewFs(cfgurl string) *Fs {
 	fs := &afero.Afero{
 		Fs: afero.NewOsFs(),
 	}
@@ -32,14 +34,16 @@ func NewFs() *Fs {
 	}
 	v.AutomaticEnv()
 	v.SetFs(fs)
-
+	tmpDir, err := fs.TempDir(os.TempDir(), "fs_")
+	if err != nil {
+		panic(err)
+	}
 	f := &Fs{
 		Afero: fs,
 		Viper: v,
 	}
-	if err := f.readInConfigFiles(); err != nil {
-		panic(err)
-	}
+	f.LoadConfig(cfgurl)
+	f.AddConfigPath(tmpDir)
 	f.Sync()
 	return f
 }
@@ -48,7 +52,7 @@ func (fs *Fs) WalkTemplates(dir string, outDir string) {
 
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			util.Panic(err, "error walking path")
+			fs.Exit(1, errFmt, err, "error walking path")
 		}
 		if strings.Contains(path, ".tmpl") {
 			b, err := ioutil.ReadFile(path)
@@ -65,7 +69,7 @@ func (fs *Fs) WalkTemplates(dir string, outDir string) {
 		}
 		return nil
 	}); err != nil {
-		util.Panic(err, "failed to walk templates")
+		fs.Exit(1, errFmt, err, "failed to walk templates")
 	}
 }
 
@@ -112,9 +116,9 @@ func (c *Fs) ScanAndReplaceFile(f afero.File, replacements ...string) {
 	}
 	_, err = io.WriteString(newf, newstr)
 	if err != nil {
-		util.Panic(err, "failed to write string to new file")
+		c.Exit(1, errFmt, err, "failed to write string to new file")
 	}
-	util.Println("successfully scanned and replaced: " + f.Name())
+	fmt.Println("successfully scanned and replaced: " + f.Name())
 }
 
 func (f *Fs) ScanAndReplace(r io.Reader, replacements ...string) string {
@@ -125,4 +129,15 @@ func (f *Fs) ScanAndReplace(r io.Reader, replacements ...string) string {
 		text = rep.Replace(scanner.Text())
 	}
 	return text
+}
+
+func (c *Fs) Exit(code int, format string, args ...interface{}) {
+	fmt.Printf(format, args...)
+	os.Exit(code)
+}
+
+func (c *Fs) Cd(path string) {
+	if err := os.Chdir(path); err != nil {
+		c.Exit(1, errFmt, err, "failed to change working directory")
+	}
 }

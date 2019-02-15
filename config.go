@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/Masterminds/sprig"
-	"github.com/gofunct/fsctl/util"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,7 +11,7 @@ import (
 	"text/template"
 )
 
-func (c *Fs) readInConfigFiles() error {
+func (c *Fs) ReadAllJsonAndYaml() error {
 	if err := filepath.Walk(os.Getenv("PWD"), func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
@@ -22,15 +20,12 @@ func (c *Fs) readInConfigFiles() error {
 		if info.IsDir() && info.Name() == "vendor" {
 			return filepath.SkipDir
 		}
-		if filepath.Ext(path) == ".yaml" {
+		if filepath.Ext(path) == ".yaml" || filepath.Ext(path) == "json" {
 			b, err := ioutil.ReadFile(path)
 			if err != nil {
 				panic(err)
 			}
-			b, err = yaml.Marshal(b)
-			if err != nil {
-				panic(err)
-			}
+
 			if err := c.ReadConfig(bytes.NewBuffer(b)); err != nil {
 				panic(err)
 			}
@@ -45,9 +40,13 @@ func (c *Fs) readInConfigFiles() error {
 func (c *Fs) Render(s string) string {
 	if strings.Contains(s, "{{") {
 		t, err := template.New("").Funcs(sprig.GenericFuncMap()).Parse(s)
-		util.Panic(err, "failed to render string")
+		if err != nil {
+			c.Exit(1, errFmt, err, "failed to render string")
+		}
 		buf := bytes.NewBuffer(nil)
-		util.Panic(t.Execute(buf, c.AllSettings()), "failed to render string")
+		if err := t.Execute(buf, c.AllSettings()); err != nil {
+			c.Exit(1, errFmt, err, "failed to render string")
+		}
 		return buf.String()
 	}
 	return s
@@ -61,7 +60,9 @@ func (c *Fs) Sync() {
 	for k, v := range c.AllSettings() {
 		val, ok := v.(string)
 		if ok {
-			util.PrintErr(os.Setenv(k, val), "failed to bind config to env variable")
+			if err := os.Setenv(k, val); err != nil {
+				c.Exit(1, errFmt, err, "failed to bind config to env variable")
+			}
 		}
 	}
 }
