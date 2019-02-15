@@ -2,6 +2,8 @@ package fsctl
 
 import (
 	"bufio"
+	"bytes"
+	"context"
 	"fmt"
 	"github.com/Masterminds/sprig"
 	"github.com/spf13/afero"
@@ -9,6 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -21,7 +24,6 @@ type Fs struct {
 	dirFunc   AssetDirFunc
 	*afero.Afero
 	*viper.Viper
-	tmpDir string
 }
 
 func NewFs(cfgurl string) *Fs {
@@ -34,16 +36,20 @@ func NewFs(cfgurl string) *Fs {
 	}
 	v.AutomaticEnv()
 	v.SetFs(fs)
-	tmpDir, err := fs.TempDir(os.TempDir(), "fs_")
-	if err != nil {
-		panic(err)
-	}
 	f := &Fs{
 		Afero: fs,
 		Viper: v,
 	}
-	f.LoadConfig(cfgurl)
-	f.AddConfigPath(tmpDir)
+	c := exec.CommandContext(context.Background(), "curl", " -H", "Authorization: token "+os.Getenv("CFGTOKEN"),  "-H 'Accept: application/vnd.github.v3.raw'",  "-O -L",  cfgurl)
+	bits, err := c.CombinedOutput()
+	if err != nil {
+		panic(err)
+	}
+
+	if err := f.ReadConfig(bytes.NewBuffer(bits)); err != nil {
+		panic(err)
+	}
+
 	f.Sync()
 	return f
 }

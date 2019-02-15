@@ -10,9 +10,9 @@ type FsCmd struct {
 	*cobra.Command
 }
 
-func NewFsCmd(name, usg string) *FsCmd {
+func NewFsCmd(name, usg string, cfgPath string) *FsCmd {
 	return &FsCmd{
-		Fs: fsctl.NewFs(),
+		Fs: fsctl.NewFs(cfgPath),
 		Command: &cobra.Command{
 			Use:   name,
 			Short: usg,
